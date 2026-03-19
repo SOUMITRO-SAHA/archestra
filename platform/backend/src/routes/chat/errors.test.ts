@@ -374,6 +374,105 @@ describe("mapProviderError - Anthropic", () => {
       expect(result.code).toBe(ChatErrorCode.ServerError);
     });
   });
+
+  describe("400 - api_validation_error with token limit", () => {
+    it("should map to ContextTooLong when message contains 'prompt is too long'", () => {
+      const error = createAnthropicError(
+        400,
+        AnthropicErrorTypes.API_VALIDATION_ERROR,
+        "prompt is too long: 201381 tokens > 200000 maximum",
+      );
+      const result = mapProviderError(error, "anthropic");
+
+      expect(result.code).toBe(ChatErrorCode.ContextTooLong);
+      expect(result.message).toBe(
+        ChatErrorMessages[ChatErrorCode.ContextTooLong],
+      );
+      expect(result.isRetryable).toBe(false);
+    });
+
+    it("should map to ContextTooLong when message contains 'exceeds maximum'", () => {
+      const error = createAnthropicError(
+        400,
+        AnthropicErrorTypes.API_VALIDATION_ERROR,
+        "This request exceeds the maximum allowed context length",
+      );
+      const result = mapProviderError(error, "anthropic");
+
+      expect(result.code).toBe(ChatErrorCode.ContextTooLong);
+    });
+
+    it("should map to ContextTooLong when message contains 'context length'", () => {
+      const error = createAnthropicError(
+        400,
+        AnthropicErrorTypes.API_VALIDATION_ERROR,
+        "context length exceeded for this model",
+      );
+      const result = mapProviderError(error, "anthropic");
+
+      expect(result.code).toBe(ChatErrorCode.ContextTooLong);
+    });
+
+    it("should map to ContextTooLong when message contains 'too many tokens'", () => {
+      const error = createAnthropicError(
+        400,
+        AnthropicErrorTypes.API_VALIDATION_ERROR,
+        "Request has too many tokens",
+      );
+      const result = mapProviderError(error, "anthropic");
+
+      expect(result.code).toBe(ChatErrorCode.ContextTooLong);
+    });
+
+    it("should map to InvalidRequest for api_validation_error without token limit message", () => {
+      const error = createAnthropicError(
+        400,
+        AnthropicErrorTypes.API_VALIDATION_ERROR,
+        "Invalid parameter format",
+      );
+      const result = mapProviderError(error, "anthropic");
+
+      expect(result.code).toBe(ChatErrorCode.InvalidRequest);
+    });
+  });
+
+  describe("400 - invalid_request_error with token limit", () => {
+    it("should map to ContextTooLong when message contains 'prompt is too long'", () => {
+      const error = createAnthropicError(
+        400,
+        AnthropicErrorTypes.INVALID_REQUEST,
+        "prompt is too long: 201381 tokens > 200000 maximum",
+      );
+      const result = mapProviderError(error, "anthropic");
+
+      expect(result.code).toBe(ChatErrorCode.ContextTooLong);
+    });
+
+    it("should map to ContextTooLong when message contains 'exceeds maximum'", () => {
+      const error = createAnthropicError(
+        400,
+        AnthropicErrorTypes.INVALID_REQUEST,
+        "This request exceeds the maximum allowed context length",
+      );
+      const result = mapProviderError(error, "anthropic");
+
+      expect(result.code).toBe(ChatErrorCode.ContextTooLong);
+    });
+  });
+
+  describe("413 - request_too_large (existing behavior)", () => {
+    it("should map to ContextTooLong and not be affected by new logic", () => {
+      const error = createAnthropicError(
+        413,
+        AnthropicErrorTypes.REQUEST_TOO_LARGE,
+        "Request exceeds the maximum allowed size",
+      );
+      const result = mapProviderError(error, "anthropic");
+
+      expect(result.code).toBe(ChatErrorCode.ContextTooLong);
+      expect(result.isRetryable).toBe(false);
+    });
+  });
 });
 
 // =============================================================================

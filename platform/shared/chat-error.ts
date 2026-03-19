@@ -31,6 +31,7 @@ export const OpenAIErrorTypes = {
  */
 export const AnthropicErrorTypes = {
   INVALID_REQUEST: "invalid_request_error",
+  API_VALIDATION_ERROR: "api_validation_error",
   AUTHENTICATION: "authentication_error",
   PERMISSION: "permission_error",
   NOT_FOUND: "not_found_error",

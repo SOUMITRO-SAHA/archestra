@@ -103,6 +103,7 @@ interface ParsedOpenAIError {
 interface ParsedAnthropicError {
   type?: string;
   message?: string;
+  isTokenLimitError?: boolean;
 }
 
 interface ParsedZhipuaiError {
@@ -183,11 +184,22 @@ function parseAnthropicError(
 ): ParsedAnthropicError | null {
   try {
     const parsed = JSON.parse(responseBody);
+    const errorMessage = parsed?.error?.message || parsed?.message || "";
+
+    // Detect token limit error patterns in the message
+    const isTokenLimitError =
+      /prompt is too long/i.test(errorMessage) ||
+      /exceeds(\s+the)?\s+maximum/i.test(errorMessage) ||
+      /context length.*exceed/i.test(errorMessage) ||
+      /too many tokens/i.test(errorMessage) ||
+      /tokens.*maximum/i.test(errorMessage);
+
     // Handle nested error object
     if (parsed?.error) {
       return {
         type: parsed.error.type,
         message: parsed.error.message,
+        isTokenLimitError,
       };
     }
     // Handle flat structure
@@ -195,6 +207,7 @@ function parseAnthropicError(
       return {
         type: parsed.type,
         message: parsed.message,
+        isTokenLimitError,
       };
     }
     return null;
@@ -716,9 +729,19 @@ function mapAnthropicErrorToCode(
       case AnthropicErrorTypes.API_ERROR:
       case AnthropicErrorTypes.OVERLOADED:
         return ChatErrorCode.ServerError;
+      case AnthropicErrorTypes.API_VALIDATION_ERROR:
       case AnthropicErrorTypes.INVALID_REQUEST:
+        // Check if this is a token limit error
+        if (parsedError?.isTokenLimitError) {
+          return ChatErrorCode.ContextTooLong;
+        }
         return ChatErrorCode.InvalidRequest;
     }
+  }
+
+  // Final fallback: check message content for token limit patterns
+  if (parsedError?.isTokenLimitError) {
+    return ChatErrorCode.ContextTooLong;
   }
 
   // Fall back to status code (including 529 for overloaded)
