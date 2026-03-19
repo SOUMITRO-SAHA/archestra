@@ -5,7 +5,9 @@ import {
   CornerDownLeftIcon,
   ImageIcon,
   Loader2Icon,
+  Maximize2Icon,
   MicIcon,
+  Minimize2Icon,
   PaperclipIcon,
   PlusIcon,
   SquareIcon,
@@ -68,6 +70,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useIsMobile } from "@/lib/use-mobile.hook";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
@@ -905,6 +908,10 @@ export const PromptInputTextarea = ({
   const controller = useOptionalPromptInputController();
   const attachments = usePromptInputAttachments();
   const [isComposing, setIsComposing] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
     if (e.key === "Enter") {
@@ -930,6 +937,10 @@ export const PromptInputTextarea = ({
       }
 
       form?.requestSubmit();
+
+      if (isFullscreen) {
+        setIsFullscreen(false);
+      }
     }
 
     // Remove last attachment when Backspace is pressed and textarea is empty
@@ -982,18 +993,60 @@ export const PromptInputTextarea = ({
         onChange,
       };
 
+  const showExpandButton =
+    isMobile && controller
+      ? controller.textInput.value.split("\n").length > 5 ||
+        controller.textInput.value.length > 300
+      : false;
+
+  const toggleFullscreen = useCallback(() => {
+    setIsFullscreen((prev) => !prev);
+  }, []);
+
   return (
-    <InputGroupTextarea
-      className={cn("field-sizing-content max-h-48 min-h-16", className)}
-      name="message"
-      onCompositionEnd={() => setIsComposing(false)}
-      onCompositionStart={() => setIsComposing(true)}
-      onKeyDown={handleKeyDown}
-      onPaste={handlePaste}
-      placeholder={placeholder}
-      {...props}
-      {...controlledProps}
-    />
+    <div ref={containerRef} className="relative w-full">
+      <InputGroupTextarea
+        className={cn(
+          "field-sizing-content",
+          isFullscreen ? "max-h-[75vh]" : "max-h-48 min-h-16",
+          className,
+        )}
+        name="message"
+        onCompositionEnd={() => setIsComposing(false)}
+        onCompositionStart={() => setIsComposing(true)}
+        onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
+        placeholder={placeholder}
+        ref={textareaRef}
+        {...props}
+        {...controlledProps}
+      />
+
+      {showExpandButton && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className={cn(
+            "absolute bottom-2 right-2 size-6 opacity-70 hover:opacity-100 bg-background",
+            "transition-opacity",
+          )}
+          onClick={toggleFullscreen}
+        >
+          {isFullscreen ? (
+            <>
+              <Minimize2Icon className="size-4" />
+              <span className="sr-only">Minimize</span>
+            </>
+          ) : (
+            <>
+              <Maximize2Icon className="size-3" />
+              <span className="sr-only">Expand to fullscreen</span>
+            </>
+          )}
+        </Button>
+      )}
+    </div>
   );
 };
 
